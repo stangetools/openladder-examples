@@ -1,0 +1,246 @@
+{
+  "id": "bb930123-487b-47f2-bf89-db323c71f111",
+  "name": "Copy of Sample: Tank Filling Process",
+  "lastModified": "2026-03-14T21:33:18.163Z",
+  "variables": [
+    {
+      "id": "var-sample-01",
+      "name": "Start_PB",
+      "type": "BOOL",
+      "description": "System Start Pushbutton",
+      "value": false
+    },
+    {
+      "id": "var-sample-02",
+      "name": "Stop_PB",
+      "type": "BOOL",
+      "description": "System Stop Pushbutton",
+      "value": false
+    },
+    {
+      "id": "var-sample-03",
+      "name": "Tank_Level",
+      "type": "REAL",
+      "description": "Current level of the tank (0-100)",
+      "value": 10.5
+    },
+    {
+      "id": "var-sample-04",
+      "name": "High_Level_Setpoint",
+      "type": "REAL",
+      "description": "Level at which pump stops",
+      "value": 95
+    },
+    {
+      "id": "var-sample-05",
+      "name": "High_Level_Alarm",
+      "type": "BOOL",
+      "description": "Alarm bit for high level",
+      "value": false
+    },
+    {
+      "id": "var-sample-06",
+      "name": "Mix_Timer",
+      "type": "TIMER",
+      "description": "Timer for mixing process",
+      "value": {
+        "ACC": 0,
+        "PRE": 5000,
+        "DN": false,
+        "TT": false,
+        "EN": false
+      }
+    },
+    {
+      "id": "var-sample-07",
+      "name": "Fill_Pump",
+      "type": "PumpControl",
+      "description": "Instance of PumpControl FB for the fill pump",
+      "fbDefinitionId": "fb-sample-motor-01",
+      "value": {
+        "Start_Cmd": false,
+        "Stop_Cmd": false,
+        "Motor_Running": false,
+        "Seal_In": false
+      }
+    }
+  ],
+  "tasks": [
+    {
+      "id": "task-sample-main-01",
+      "name": "MainTask",
+      "type": "Continuous",
+      "period": 100,
+      "mainRoutineId": "routine-sample-main-01"
+    }
+  ],
+  "routines": [
+    {
+      "id": "routine-sample-main-01",
+      "name": "MainLogic",
+      "taskId": "task-sample-main-01"
+    },
+    {
+      "id": "routine-sample-alarm-01",
+      "name": "AlarmLogic",
+      "taskId": "task-sample-main-01"
+    }
+  ],
+  "ladderLogic": {
+    "routine-sample-main-01": [
+      {
+        "id": "e97960f1-4736-47a9-98c8-a66db5463e56",
+        "comment": "Call the pump function block. The pump is commanded to start by the Start_PB, as long as there is no high level alarm. It is commanded to stop by the Stop_PB.",
+        "conditions": [
+          {
+            "id": "a9ed1814-9ca7-4f86-bba2-97f517a003b6",
+            "type": "NC_CONTACT",
+            "tagId": "var-sample-05"
+          }
+        ],
+        "coils": [
+          {
+            "id": "3cbc95a4-61ca-4170-9f1e-230172f7a358",
+            "type": "FB_CALL",
+            "tagId": "var-sample-07",
+            "parameterMap": {
+              "Start_Cmd": "Start_PB",
+              "Stop_Cmd": "Stop_PB",
+              "Motor_Running": "none"
+            }
+          }
+        ]
+      },
+      {
+        "id": "30ef1c7a-bc45-4bbe-85e9-9e0b1dac1a3d",
+        "comment": "When the pump is running, start a 5-second timer for mixing.",
+        "conditions": [
+          {
+            "id": "09e9ff84-343f-4a99-a196-aa83598ece78",
+            "type": "NO_CONTACT",
+            "tagId": "var-sample-07",
+            "subTag": "Motor_Running"
+          }
+        ],
+        "coils": [
+          {
+            "id": "5cfa9a78-d51a-49c1-8baf-2baa676a5b26",
+            "type": "TON",
+            "tagId": "var-sample-06",
+            "preset": 5000
+          }
+        ]
+      },
+      {
+        "id": "45e0d8e7-11f0-4dc7-8977-653874073bc7",
+        "comment": "Always jump to the alarm logic routine to continuously monitor for alarms.",
+        "conditions": [],
+        "coils": [
+          {
+            "id": "157c9c55-ceb6-4402-9506-3edb85a6f67a",
+            "type": "JSR",
+            "targetRoutineId": "routine-sample-alarm-01"
+          }
+        ]
+      }
+    ],
+    "routine-sample-alarm-01": [
+      {
+        "id": "5de8f07e-5cbf-46c9-bdd9-d6ea5844d437",
+        "comment": "If tank level exceeds the setpoint, trigger a high level alarm.",
+        "conditions": [
+          {
+            "id": "e11ddd98-24b9-4940-ae00-17ea2b125b5f",
+            "type": "GEQ",
+            "sourceA": "Tank_Level",
+            "sourceB": "High_Level_Setpoint"
+          }
+        ],
+        "coils": [
+          {
+            "id": "c810d703-02eb-4599-a034-8bf2f59c421a",
+            "type": "OUTPUT_COIL",
+            "tagId": "var-sample-05"
+          }
+        ]
+      }
+    ]
+  },
+  "functionBlockDefs": [
+    {
+      "id": "fb-sample-motor-01",
+      "name": "PumpControl",
+      "variables": [
+        {
+          "name": "Start_Cmd",
+          "type": "BOOL",
+          "paramType": "IN",
+          "description": "Start command"
+        },
+        {
+          "name": "Stop_Cmd",
+          "type": "BOOL",
+          "paramType": "IN",
+          "description": "Stop command"
+        },
+        {
+          "name": "Motor_Running",
+          "type": "BOOL",
+          "paramType": "OUT",
+          "description": "Motor is running status"
+        },
+        {
+          "name": "Seal_In",
+          "type": "BOOL",
+          "paramType": "STATIC",
+          "description": "Internal seal-in bit"
+        }
+      ],
+      "logic": [
+        {
+          "id": "c277d1f1-4222-4ed7-bb8b-7e25a1f4e9bc",
+          "comment": "Standard motor seal-in circuit.",
+          "conditions": [
+            {
+              "id": "a21a5beb-1c07-4b72-b46b-6285d904125a",
+              "type": "BRANCH",
+              "legs": [
+                [
+                  {
+                    "id": "ffe55664-6886-4a07-a684-4544adba43bc",
+                    "type": "NO_CONTACT",
+                    "tagId": "Start_Cmd"
+                  }
+                ],
+                [
+                  {
+                    "id": "2d744f3d-f94a-4ac7-b98e-623931387efd",
+                    "type": "NO_CONTACT",
+                    "tagId": "Seal_In"
+                  }
+                ]
+              ]
+            },
+            {
+              "id": "5bda38a7-f473-461e-bac9-03309510351f",
+              "type": "NC_CONTACT",
+              "tagId": "Stop_Cmd"
+            }
+          ],
+          "coils": [
+            {
+              "id": "c6bad233-3338-4e69-9852-60bf7e4d3b08",
+              "type": "OUTPUT_COIL",
+              "tagId": "Seal_In"
+            },
+            {
+              "id": "0536ab86-cbc6-465c-8bae-25dc90d90a22",
+              "type": "OUTPUT_COIL",
+              "tagId": "Motor_Running"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
